@@ -7,6 +7,76 @@ const {
 } = require('../utils/emailTemplates');
 const crypto = require('crypto');
 
+// @desc    Register admin
+// @route   POST /api/auth/register-admin
+// @access  Public (with secret key)
+exports.registerAdmin = async (req, res) => {
+  try {
+    console.log('Admin registration request received:', req.body);
+    
+    const { name, email, password, phone, adminSecretKey } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !password || !adminSecretKey) {
+      return res.status(400).json({
+        success: false,
+        error: 'Please provide name, email, password, and admin secret key'
+      });
+    }
+
+    // Verify admin secret key
+    if (adminSecretKey !== process.env.ADMIN_SECRET_KEY) {
+      return res.status(403).json({
+        success: false,
+        error: 'Invalid admin secret key'
+      });
+    }
+
+    // Check if user exists
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({
+        success: false,
+        error: 'User already exists with this email'
+      });
+    }
+
+    // Create admin user
+    const user = await User.create({
+      name,
+      email,
+      password,
+      phone: phone || '',
+      role: 'admin',
+      isEmailVerified: true // Auto-verify admin accounts
+    });
+
+    console.log('Admin user created:', user._id);
+
+    // Generate token
+    const token = user.getSignedJwtToken();
+
+    res.status(201).json({
+      success: true,
+      message: 'Admin registration successful! You can now log in.',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        isEmailVerified: user.isEmailVerified
+      }
+    });
+  } catch (error) {
+    console.error('Admin registration error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Admin registration failed'
+    });
+  }
+};
+
 // @desc    Register user
 // @route   POST /api/auth/register
 // @access  Public
