@@ -1,23 +1,31 @@
-FROM python:3.12-slim
+# Build Stage
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+COPY package.json package-lock.json ./
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN npm config set fetch-timeout 60000 && \
+    npm config set fetch-retries 5 && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm ci --prefer-offline --no-audit
 
-# Copy project files
 COPY . .
 
-# Collect static files
-RUN python manage.py collectstatic --noinput || true
+RUN npm run build
 
-# Expose port
+# Run Stage
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=3006
+ENV HOST=0.0.0.0
+
+RUN npm install -g serve
+
+COPY --from=builder /app/dist ./dist
+
 EXPOSE 3006
 
-# Start command
-CMD gunicorn app.wsgi:application --bind 0.0.0.0:3006
+CMD ["serve", "-s", "dist", "-l", "3006"]
