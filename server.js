@@ -30,6 +30,8 @@ app.use(cookieParser());
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
+  'royalelysaapi.jazyen.com',
+  'royalelysaa.jazyen.com',
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
