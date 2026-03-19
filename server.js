@@ -15,6 +15,7 @@ dotenv.config();
 connectDB();
 
 const app = express();
+app.set('trust proxy', 2);
 
 // Body parser
 app.use(express.json());
